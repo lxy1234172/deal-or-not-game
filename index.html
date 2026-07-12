@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>一掷千金 — Deal or No Deal</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{
+  font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  background:radial-gradient(ellipse at center,#0f0c29 0%,#1a0a2e 40%,#0a0a1a 100%);
+  color:#fff;height:100vh;overflow:hidden;
+}
+#app{display:flex;height:100vh;max-width:100vw;}
+
+/* ── Main Panel ───────────────────────── */
+#main-panel{
+  flex:1;display:flex;flex-direction:column;
+  min-width:0;padding:6px 8px 6px 10px;overflow:hidden;
+}
+
+/* top row: title + status pills */
+#top-row{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:2px 0;flex-shrink:0;min-height:32px;
+}
+#top-row h1{
+  font-size:1.1rem;font-weight:800;white-space:nowrap;
+  background:linear-gradient(135deg,#ffd700,#ffaa00,#ffd700);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;letter-spacing:2px;
+}
+#top-row .sub{color:#555;font-size:.6rem;letter-spacing:2px;margin-left:-3px;}
+#top-row .spacer{flex:1;min-width:4px;}
+.stat-pill{
+  display:inline-flex;align-items:center;gap:3px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,215,0,.12);
+  border-radius:5px;padding:1px 7px;font-size:.65rem;color:#999;white-space:nowrap;
+}
+.stat-pill .val{color:#ffd700;font-weight:600;}
+
+/* banker area */
+#banker-row{flex-shrink:0;min-height:0;display:flex;align-items:center;justify-content:center;margin:1px 0;}
+#offer-display{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;
+  background:linear-gradient(135deg,rgba(255,215,0,.08),rgba(255,170,0,.04));
+  border:1px solid rgba(255,215,0,.25);border-radius:8px;
+  padding:4px 14px;
+  animation:offerGlow 2s ease-in-out infinite alternate;
+}
+@keyframes offerGlow{
+  0%{box-shadow:0 0 8px rgba(255,215,0,.06),inset 0 0 8px rgba(255,215,0,.02);}
+  100%{box-shadow:0 0 16px rgba(255,215,0,.14),inset 0 0 14px rgba(255,215,0,.04);}
+}
+#offer-label{font-size:.6rem;color:#b8952e;letter-spacing:2px;}
+#offer-amount{
+  font-size:1.5rem;font-weight:800;color:#ffd700;
+  text-shadow:0 0 10px rgba(255,215,0,.2);transition:all .3s ease;
+}
+#banker-msg{font-size:.65rem;color:#bbb;max-width:200px;line-height:1.2;}
+#offer-buttons{display:flex;gap:4px;}
+.btn{
+  padding:3px 10px;border:none;border-radius:5px;font-size:.7rem;
+  font-weight:700;cursor:pointer;transition:all .12s;letter-spacing:1px;
+  font-family:inherit;white-space:nowrap;
+}
+.btn:hover{transform:translateY(-1px);}
+.btn:active{transform:translateY(0);}
+.btn:disabled{opacity:.3;cursor:not-allowed;transform:none;}
+.btn-deal{background:linear-gradient(135deg,#28a745,#209e3a);color:#fff;}
+.btn-nodeal{background:linear-gradient(135deg,#dc3545,#c82333);color:#fff;}
+.btn-negotiate{background:linear-gradient(135deg,#ffc107,#e0a800);color:#1a1a2e;}
+#banker-calling{display:flex;align-items:center;gap:5px;}
+#banker-calling .phone-icon{font-size:1.3rem;animation:ring 1s ease-in-out infinite alternate;}
+@keyframes ring{0%{transform:rotate(-12deg);}100%{transform:rotate(12deg);}}
+.calling-text{color:#ffd700;font-size:.75rem;letter-spacing:1px;}
+
+/* player case area (shown after selection) */
+#player-case-row{
+  flex-shrink:0;display:flex;justify-content:center;padding:2px 0 4px;
+  animation:slideDown .3s ease;
+}
+@keyframes slideDown{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
+#player-case-box{
+  display:flex;align-items:center;gap:10px;
+  background:linear-gradient(135deg,rgba(255,215,0,.08),rgba(180,130,0,.04));
+  border:1.5px solid #ffd700;border-radius:10px;
+  padding:4px 18px 4px 14px;
+  box-shadow:0 0 18px rgba(255,215,0,.15);
+}
+.pcase-icon{font-size:1.5rem;}
+.pcase-label{font-size:.7rem;color:#b8952e;letter-spacing:1px;white-space:nowrap;}
+.pcase-num{
+  font-size:1.3rem;font-weight:800;color:#ffd700;
+  text-shadow:0 0 10px rgba(255,215,0,.3);
+}
+
+/* cases grid */
+#cases-container{
+  flex:1;display:grid;grid-template-columns:repeat(5,1fr);
+  gap:3px;padding:1px 0;min-height:0;
+}
+#cases-container.grid-26{grid-template-rows:repeat(6,1fr);}
+#cases-container.grid-25{grid-template-rows:repeat(5,1fr);}
+
+.case-wrap{
+  perspective:400px;cursor:pointer;overflow:hidden;
+  border-radius:6px;position:relative;
+}
+.case-inner{
+  width:100%;height:100%;position:relative;transition:transform .3s ease;
+  transform-style:preserve-3d;
+}
+.case{
+  width:100%;height:100%;position:absolute;top:0;left:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  backface-visibility:hidden;border-radius:6px;
+}
+.case-front{
+  background:linear-gradient(145deg,#8B4513,#654321,#5c3a1a);
+  border:1.5px solid #b8860b;box-shadow:0 2px 4px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,215,0,.15);
+  z-index:2;
+}
+.case-front::before{
+  content:'';position:absolute;top:3px;left:50%;transform:translateX(-50%);
+  width:35%;height:4px;background:linear-gradient(90deg,#b8860b,#ffd700,#b8860b);
+  border-radius:2px;
+}
+.case-number{font-size:.85rem;font-weight:700;color:#ffd700;text-shadow:0 1px 3px rgba(0,0,0,.5);}
+.case-back{
+  background:linear-gradient(145deg,#1a1a2e,#16213e);
+  border:1.5px solid rgba(255,215,0,.25);transform:rotateY(180deg);
+  z-index:1;
+}
+.case-amount{font-size:.7rem;font-weight:700;color:#ffd700;text-align:center;padding:2px;}
+.case-amount.low{color:#aaa;}
+.case-amount.medium{color:#4fc3f7;}
+.case-amount.high{color:#ff7043;}
+.case-amount.top{color:#ffd700;font-size:.8rem;}
+.case-wrap.opened .case-inner{transform:rotateY(180deg);}
+.case-wrap.player-case .case-front{
+  border-color:#ffd700;box-shadow:0 0 12px rgba(255,215,0,.25),inset 0 0 12px rgba(255,215,0,.06);
+  background:linear-gradient(145deg,#7a3b10,#5c2e0e);
+}
+.case-wrap.player-case .case-number::after{content:'★';font-size:.5rem;display:block;color:#ffd700;margin-top:-1px;}
+.case-wrap.disabled{cursor:default;opacity:.75;}
+.case-wrap:not(.disabled):not(.opened):hover .case-front{
+  border-color:#ffd700;box-shadow:0 0 10px rgba(255,215,0,.2);
+  transform:scale(1.04);transition:all .12s;
+}
+
+/* message */
+#msg-row{flex-shrink:0;text-align:center;font-size:.7rem;color:#bbb;padding:1px 0;min-height:1.1em;}
+
+/* ── Stats Panel ──────────────────────── */
+#stats-panel{
+  width:190px;flex-shrink:0;display:flex;flex-direction:column;
+  border-left:1px solid rgba(255,215,0,.12);
+  background:rgba(0,0,0,.25);padding:6px 5px 4px;overflow:hidden;
+}
+#stats-panel .stats-title{
+  text-align:center;font-size:.6rem;color:#b8952e;
+  letter-spacing:2px;padding-bottom:3px;border-bottom:1px solid rgba(255,215,0,.1);
+  flex-shrink:0;
+}
+#stats-columns{flex:1;display:flex;gap:3px;min-height:0;padding-top:3px;}
+.stats-col{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;gap:1px;}
+.amt-stat{
+  font-size:.55rem;font-weight:600;padding:1px 3px;border-radius:3px;
+  text-align:center;white-space:nowrap;line-height:1.3;flex-shrink:0;
+  transition:all .15s;
+}
+.amt-stat.active{
+  color:#ffd700;border:1px solid rgba(255,215,0,.35);
+  background:rgba(255,215,0,.07);
+}
+.amt-stat.eliminated{color:#444;text-decoration:line-through;}
+
+/* ── Modals ──────────────────────────── */
+.modal-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;
+  z-index:100;animation:fadeIn .2s ease;
+}
+.modal{
+  background:linear-gradient(135deg,#1a1a2e,#162447);
+  border:2px solid rgba(255,215,0,.25);border-radius:14px;
+  padding:20px 24px;max-width:360px;width:90%;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);text-align:center;
+}
+.modal h2{color:#ffd700;font-size:1.2rem;margin-bottom:6px;}
+.modal p{color:#ccc;font-size:.8rem;line-height:1.5;margin-bottom:6px;}
+.modal .highlight{color:#ffd700;font-weight:700;font-size:1rem;}
+.modal input[type=number]{
+  width:100%;padding:7px 10px;font-size:.95rem;border:none;border-radius:6px;
+  background:rgba(255,255,255,.1);color:#fff;font-weight:600;
+  outline:2px solid rgba(255,215,0,.3);text-align:center;margin:4px 0 8px;
+  font-family:inherit;
+}
+.modal input[type=number]:focus{outline-color:#ffd700;}
+.modal .btn-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
+.btn-submit{background:linear-gradient(135deg,#ffc107,#e0a800);color:#1a1a2e;}
+.btn-cancel{background:rgba(255,255,255,.1);color:#ccc;}
+.btn-sm{padding:5px 14px;border:none;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .12s;font-family:inherit;}
+.btn-sm:hover{transform:translateY(-1px);}
+#result-amount{font-size:1.8rem;font-weight:800;color:#ffd700;text-shadow:0 0 12px rgba(255,215,0,.2);margin:4px 0;}
+#result-sub{font-size:.78rem;color:#999;}
+#result-case-amount{color:#ffd700;font-weight:600;}
+.btn-play-again{
+  margin-top:10px;padding:7px 20px;background:linear-gradient(135deg,#ffd700,#ffaa00);
+  border:none;border-radius:8px;font-size:.85rem;font-weight:700;color:#1a1a2e;
+  cursor:pointer;transition:all .12s;font-family:inherit;
+}
+.btn-play-again:hover{transform:translateY(-1px);box-shadow:0 3px 12px rgba(255,215,0,.2);}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+.slide-up{animation:slideUp .25s ease;}
+.hidden{display:none !important;}
+#nego-hint{font-size:.65rem;color:#888;margin-top:3px;}
+
+/* responsive */
+@media(max-width:800px){
+  #stats-panel{width:150px;}
+  #top-row h1{font-size:.9rem;}
+  .stat-pill{font-size:.58rem;}
+  #offer-amount{font-size:1.2rem;}
+  .case-number{font-size:.7rem;}
+  .case-amount{font-size:.6rem;}
+  #stats-panel .stats-title{font-size:.55rem;}
+  .amt-stat{font-size:.5rem;}
+  #player-case-box{padding:3px 12px;}
+  .pcase-num{font-size:1rem;}
+}
+@media(max-width:640px){
+  #app{flex-direction:column;}
+  #stats-panel{width:100%;height:110px;border-left:none;border-top:1px solid rgba(255,215,0,.12);}
+  #stats-columns{flex-direction:row;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Main Panel -->
+  <div id="main-panel">
+    <!-- Top row -->
+    <div id="top-row">
+      <h1>🎰 一掷千金</h1>
+      <span class="sub">DEAL or NO DEAL</span>
+      <span class="spacer"></span>
+      <span class="stat-pill">轮次 <span class="val" id="s-round">—</span></span>
+      <span class="stat-pill">箱子 <span class="val" id="s-player">#—</span></span>
+      <span class="stat-pill">需开 <span class="val" id="s-toopen">—</span></span>
+      <span class="stat-pill">剩余 <span class="val" id="s-remain">—</span></span>
+    </div>
+
+    <!-- Banker area -->
+    <div id="banker-row">
+      <div id="banker-calling" class="hidden">
+        <span class="phone-icon">📞</span>
+        <span class="calling-text">银行家正在来电...</span>
+      </div>
+      <div id="offer-display" class="hidden">
+        <span id="offer-label">🏦 报价</span>
+        <span id="offer-amount">$0</span>
+        <span id="banker-msg"></span>
+        <span id="offer-buttons">
+          <button class="btn btn-deal" id="btn-deal">DEAL ✓</button>
+          <button class="btn btn-nodeal" id="btn-nodeal">NO DEAL ✗</button>
+          <button class="btn btn-negotiate" id="btn-negotiate">🤝 讨价</button>
+        </span>
+      </div>
+    </div>
+
+    <!-- Player's case (shown above grid after selection) -->
+    <div id="player-case-row" class="hidden">
+      <div id="player-case-box">
+        <span class="pcase-icon">📦</span>
+        <span class="pcase-label">你的箱子</span>
+        <span class="pcase-num" id="pcase-num">#?</span>
+      </div>
+    </div>
+
+    <!-- Cases grid -->
+    <div id="cases-container" class="grid-26"></div>
+
+    <!-- Message -->
+    <div id="msg-row"></div>
+  </div>
+
+  <!-- Stats Panel -->
+  <div id="stats-panel">
+    <div class="stats-title">💰 金额板</div>
+    <div id="stats-columns">
+      <div class="stats-col" id="stats-col-1"></div>
+      <div class="stats-col" id="stats-col-2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Negotiation Modal -->
+<div id="negotiation-modal" class="modal-overlay hidden">
+  <div class="modal slide-up">
+    <h2>🤝 讨价还价</h2>
+    <p>当前报价：<span class="highlight" id="nego-current">$0</span></p>
+    <p>你希望银行家出价多少？</p>
+    <input type="number" id="nego-input" min="0" step="1" placeholder="输入期望金额">
+    <div class="btn-row">
+      <button class="btn-sm btn-submit" id="nego-submit">提交</button>
+      <button class="btn-sm btn-cancel" id="nego-cancel">取消</button>
+    </div>
+    <div id="nego-hint">提示：狮子大开口可能会被拒绝</div>
+  </div>
+</div>
+
+<!-- Result Modal -->
+<div id="result-modal" class="modal-overlay hidden">
+  <div class="modal slide-up">
+    <h2 id="result-title">🎉 DEAL!</h2>
+    <div id="result-amount">$0</div>
+    <p id="result-sub"></p>
+    <div id="result-reveal" class="hidden" style="margin-top:4px;">
+      <p style="color:#aaa;font-size:.75rem;">你的箱子里原本是：<span id="result-case-amount">$0</span></p>
+    </div>
+    <button class="btn-play-again" id="btn-play-again">🔄 再来一局</button>
+  </div>
+</div>
+
+<script>
+const AMOUNTS=[0.01,1,5,10,25,50,75,100,200,300,400,500,750,1000,5000,10000,25000,50000,75000,100000,200000,300000,400000,500000,750000,1000000];
+const OPENING_SCHEDULE=[6,5,4,3,2,1,1,1,1];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
+function fmt(n){if(typeof n!=='number')return'$0';if(n<1)return'$'+n.toFixed(2);return'$'+n.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});}
+function amountClass(v){if(v<=50)return'low';if(v<=5000)return'medium';if(v<=100000)return'high';return'top';}
+
+let G={};
+function initGame(){
+  G={cases:[],playerNum:null,roundIndex:0,openedInRound:0,phase:'selectCase',offer:0,canNegotiate:true,eliminatedAmounts:new Set(),bankerMsg:''};
+  const amounts=shuffle([...AMOUNTS]);
+  G.cases=amounts.map((amt,i)=>({num:i+1,amount:amt,opened:false,isPlayer:false}));
+  document.getElementById('player-case-row').classList.add('hidden');
+  renderAll();setMessage('请选择一个箱子作为你的箱子');
+  showOffer(false);showCalling(false);
+  hideModal('negotiation-modal');hideModal('result-modal');
+  document.getElementById('banker-msg').textContent='';
+}
+
+function selectCase(num){
+  if(G.phase!=='selectCase')return;
+  const c=G.cases.find(x=>x.num===num);if(!c)return;
+  c.isPlayer=true;G.playerNum=num;G.phase='opening';G.roundIndex=0;G.openedInRound=0;
+  document.getElementById('pcase-num').textContent='#'+num;
+  document.getElementById('player-case-row').classList.remove('hidden');
+  renderAll();
+  setMessage('第1轮 — 请打开 '+OPENING_SCHEDULE[0]+' 个箱子');
+}
+
+function openCase(num){
+  if(G.phase!=='opening')return;
+  const c=G.cases.find(x=>x.num===num);if(!c||c.opened||c.isPlayer)return;
+  c.opened=true;G.eliminatedAmounts.add(c.amount);
+  renderAll();G.openedInRound++;
+  const need=OPENING_SCHEDULE[G.roundIndex];
+  if(G.openedInRound>=need){
+    G.phase='offer';showCalling(true);setMessage('☎️ 银行家正在来电...');
+    setTimeout(()=>{showCalling(false);makeOffer();},1500);
+  }else{const left=need-G.openedInRound;setMessage('还需要打开 '+left+' 个箱子');}
+}
+
+function makeOffer(){
+  const remaining=G.cases.filter(c=>!c.opened).map(c=>c.amount);if(remaining.length===0)return;
+  const avg=remaining.reduce((a,b)=>a+b,0)/remaining.length;
+  const progress=G.roundIndex/(OPENING_SCHEDULE.length-1||1);
+  let mult=Math.min((0.22+progress*0.7)*(0.92+Math.random()*0.16),1.0);
+  if(remaining.length<=3)mult=Math.max(mult,0.85);
+  if(remaining.length<=2)mult=Math.max(mult,0.92);
+  G.offer=Math.round(avg*mult);G.phase='offer';
+  showOffer(true);const r=G.roundIndex+1,total=OPENING_SCHEDULE.length;
+  const msg=r<total?'银行家开出报价。接受还是继续？':'这是最终报价！接受还是打开你的箱子？';
+  document.getElementById('banker-msg').textContent=msg;
+  document.getElementById('offer-amount').textContent=fmt(G.offer);
+  document.getElementById('btn-negotiate').disabled=!G.canNegotiate;setMessage('');
+  const el=document.getElementById('offer-amount');el.style.transform='scale(1.25)';
+  setTimeout(()=>{el.style.transform='scale(1)';},300);
+}
+
+function handleDeal(){if(G.phase!=='offer')return;G.phase='result';showResult('deal');}
+function handleNoDeal(){
+  if(G.phase!=='offer')return;G.roundIndex++;
+  if(G.roundIndex>=OPENING_SCHEDULE.length){G.phase='result';showResult('case');return;}
+  G.openedInRound=0;G.phase='opening';showOffer(false);
+  renderAll();
+  setMessage('第'+(G.roundIndex+1)+'轮 — 请打开 '+OPENING_SCHEDULE[G.roundIndex]+' 个箱子');
+}
+
+function handleNegotiate(){
+  if(G.phase!=='offer'||!G.canNegotiate)return;
+  document.getElementById('nego-current').textContent=fmt(G.offer);
+  document.getElementById('nego-input').value='';
+  document.getElementById('nego-input').placeholder='输入金额 (≥ $'+(G.offer+1).toLocaleString()+')';
+  document.getElementById('nego-hint').textContent='提示：狮子大开口可能会被拒绝';
+  showModal('negotiation-modal');
+  setTimeout(()=>document.getElementById('nego-input').focus(),100);
+}
+
+function submitCounterOffer(){
+  const inp=document.getElementById('nego-input');const val=parseFloat(inp.value);
+  if(isNaN(val)||val<=0){inp.style.outlineColor='#ff4444';setTimeout(()=>{inp.style.outlineColor='';},600);return;}
+  G.canNegotiate=false;hideModal('negotiation-modal');
+  const orig=G.offer;let newOffer,msg;
+  if(val<=orig){newOffer=orig;msg='银行家说：别卖低了自己，报个更高的价吧。';}
+  else{
+    const ratio=val/orig;
+    if(ratio<=1.15){newOffer=val;msg='银行家说：你很会谈判，这个价我接受了！';}
+    else if(ratio<=1.5){newOffer=Math.round(orig+(val-orig)*(0.45+Math.random()*0.15));msg='银行家说：你的提议有道理，但我只能出到这个数。';}
+    else{const boost=Math.round(orig+Math.max((val-orig)*(0.1+Math.random()*0.08),orig*0.02));newOffer=boost;msg=boost===orig?'银行家说：这个价格太离谱了，报价不变。':'银行家说：你的要价太高了，我只能稍微加一点。';}
+    newOffer=Math.min(newOffer,Math.round(orig*1.8));
+  }
+  G.offer=newOffer;document.getElementById('offer-amount').textContent=fmt(G.offer);
+  document.getElementById('banker-msg').textContent=msg;
+  document.getElementById('btn-negotiate').disabled=true;
+  const el=document.getElementById('offer-amount');el.style.transform='scale(1.25)';
+  setTimeout(()=>{el.style.transform='scale(1)';},350);
+}
+
+function showResult(type){
+  showOffer(false);
+  const title=document.getElementById('result-title'),amt=document.getElementById('result-amount');
+  const sub=document.getElementById('result-sub'),reveal=document.getElementById('result-reveal');
+  const rvAmt=document.getElementById('result-case-amount');
+  const pc=G.cases.find(c=>c.isPlayer);
+  if(type==='deal'){
+    title.textContent='🎉 DEAL! 成交！';amt.textContent=fmt(G.offer);
+    sub.textContent='你带着银行家的报价离开了！';reveal.classList.remove('hidden');
+    rvAmt.textContent=fmt(pc.amount);
+    if(pc.amount>G.offer)sub.textContent='你的箱子值 '+fmt(pc.amount)+'，但至少落袋为安了！';
+    else if(pc.amount<G.offer)sub.textContent='明智！你的箱子只有 '+fmt(pc.amount)+'，赚了！';
+    else sub.textContent='刚好等于箱子价值，公平交易！';
+  }else{
+    title.textContent='📦 打开你的箱子！';amt.textContent=fmt(pc.amount);
+    reveal.classList.add('hidden');
+    sub.textContent=pc.amount>=100000?'太棒了！你坚持到了最后！':(pc.amount<=100?'运气不太好，但过程最重要！':'不错的回报！你的坚持有了回报！');
+  }
+  showModal('result-modal');setMessage('');
+}
+
+function renderAll(){renderCases();renderStats();updateStatus();}
+
+function renderCases(){
+  const container=document.getElementById('cases-container');container.innerHTML='';
+  const isSelecting=G.phase==='selectCase';
+  // Show all cases in grid if selecting, otherwise exclude player's case
+  const shown=isSelecting?G.cases:G.cases.filter(c=>!c.isPlayer);
+  container.className=isSelecting?'grid-26':'grid-25';
+  shown.forEach(c=>{
+    const wrap=document.createElement('div');wrap.className='case-wrap';
+    if(c.opened)wrap.classList.add('opened');
+    if(c.isPlayer)wrap.classList.add('player-case');
+    const clickable=isSelecting||(G.phase==='opening'&&!c.isPlayer&&!c.opened);
+    if(!clickable)wrap.classList.add('disabled');
+    wrap.dataset.num=c.num;
+    wrap.innerHTML='<div class="case-inner"><div class="case case-front"><div class="case-number">'+c.num+'</div></div><div class="case case-back"><div class="case-amount '+amountClass(c.amount)+'">'+fmt(c.amount)+'</div></div></div>';
+    wrap.addEventListener('click',()=>{const n=parseInt(wrap.dataset.num);if(G.phase==='selectCase')selectCase(n);else if(G.phase==='opening')openCase(n);});
+    container.appendChild(wrap);
+  });
+}
+
+function renderStats(){
+  const col1=document.getElementById('stats-col-1');col1.innerHTML='';
+  const col2=document.getElementById('stats-col-2');col2.innerHTML='';
+  const sorted=[...AMOUNTS].sort((a,b)=>a-b);
+  const half=Math.ceil(sorted.length/2);
+  sorted.slice(0,half).forEach(amt=>{
+    const el=document.createElement('div');el.className='amt-stat';
+    el.classList.add(G.eliminatedAmounts.has(amt)?'eliminated':'active');
+    el.textContent=fmt(amt);col1.appendChild(el);
+  });
+  sorted.slice(half).forEach(amt=>{
+    const el=document.createElement('div');el.className='amt-stat';
+    el.classList.add(G.eliminatedAmounts.has(amt)?'eliminated':'active');
+    el.textContent=fmt(amt);col2.appendChild(el);
+  });
+}
+
+function updateStatus(){
+  document.getElementById('s-round').textContent=G.phase==='selectCase'?'—':(G.roundIndex+1)+'/'+OPENING_SCHEDULE.length;
+  document.getElementById('s-player').textContent=G.playerNum?'#'+G.playerNum:'#—';
+  const need=(G.phase==='opening'&&G.roundIndex>=0)?OPENING_SCHEDULE[G.roundIndex]-G.openedInRound:0;
+  document.getElementById('s-toopen').textContent=(G.phase==='opening')?need+'个':'—';
+  document.getElementById('s-remain').textContent=G.cases.filter(c=>!c.opened).length;
+}
+
+function setMessage(msg){document.getElementById('msg-row').textContent=msg;}
+function showOffer(show){document.getElementById('offer-display').classList.toggle('hidden',!show);if(show)document.getElementById('offer-display').classList.add('slide-up');}
+function showCalling(show){document.getElementById('banker-calling').classList.toggle('hidden',!show);}
+function showModal(id){document.getElementById(id).classList.remove('hidden');}
+function hideModal(id){document.getElementById(id).classList.add('hidden');}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  initGame();
+  document.getElementById('btn-deal').addEventListener('click',handleDeal);
+  document.getElementById('btn-nodeal').addEventListener('click',handleNoDeal);
+  document.getElementById('btn-negotiate').addEventListener('click',handleNegotiate);
+  document.getElementById('nego-submit').addEventListener('click',submitCounterOffer);
+  document.getElementById('nego-cancel').addEventListener('click',()=>hideModal('negotiation-modal'));
+  document.getElementById('nego-input').addEventListener('keydown',e=>{if(e.key==='Enter')submitCounterOffer();if(e.key==='Escape')hideModal('negotiation-modal');});
+  document.getElementById('btn-play-again').addEventListener('click',()=>{hideModal('result-modal');initGame();});
+  document.getElementById('negotiation-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)hideModal('negotiation-modal');});
+  document.getElementById('result-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)hideModal('result-modal');});
+});
+</script>
+</body>
+</html>
