@@ -359,7 +359,7 @@ function openCase(num){
   if(G.phase!=='opening')return;
   const c=G.cases.find(x=>x.num===num);if(!c||c.opened||c.isPlayer)return;
   c.opened=true;G.eliminatedAmounts.add(c.amount);
-  renderAll();G.openedInRound++;
+  G.openedInRound++;renderAll();
   const need=OPENING_SCHEDULE[G.roundIndex];
   if(G.openedInRound>=need){
     G.phase='offer';showCalling(true);setMessage('☎️ 银行家正在来电...');
@@ -486,7 +486,7 @@ function updateStatus(){
   document.getElementById('s-round').textContent=G.phase==='selectCase'?'—':(G.roundIndex+1)+'/'+OPENING_SCHEDULE.length;
   document.getElementById('s-player').textContent=G.playerNum?'#'+G.playerNum:'#—';
   const need=(G.phase==='opening'&&G.roundIndex>=0)?OPENING_SCHEDULE[G.roundIndex]-G.openedInRound:0;
-  document.getElementById('s-toopen').textContent=(G.phase==='opening')?need+'个':'—';
+  document.getElementById('s-toopen').textContent=need>0?need+'个':'—';
   document.getElementById('s-remain').textContent=G.cases.filter(c=>!c.opened).length;
 }
 
